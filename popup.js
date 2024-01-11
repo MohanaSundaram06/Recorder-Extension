@@ -1,36 +1,34 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const startButton = document.getElementById("startButton");
+  const rcVideo = document.getElementById("rc-video");
+  const rcScreen = document.getElementById("rc-screen");
+  const recordWithAudio = document.getElementById("rc-screen-audio");
   const stopButton = document.getElementById("stopButton");
 
-  startButton.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { action: "startRecording" },
-        function (response) {
-          if (response) {
-            console.log(response);
-          } else {
-            console.log(chrome.runtime.lastError);
-          }
-        }
-      );
-    });
+  rcVideo.addEventListener("click", () => {
+    sendQuery("recordWithVideo");
+  });
+
+  rcScreen.addEventListener("click", () => {
+    sendQuery("recordScreen");
+  });
+
+  recordWithAudio.addEventListener("click", () => {
+    sendQuery("recordWithAudio");
   });
 
   stopButton.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(
+    sendQuery("stopRecording");
+  });
+
+  const sendQuery = (actionType) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      await chrome.tabs.sendMessage(
         tabs[0].id,
-        { action: "stopRecording" },
-        function (response) {
-          if (response) {
-            console.log(response);
-          } else {
-            console.log(chrome.runtime.lastError);
-          }
+        { action: actionType },
+        (response) => {
+          console.log("started " + response);
         }
       );
     });
-  });
+  };
 });

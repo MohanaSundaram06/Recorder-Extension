@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" 
+    content="
+      worker-src blob:; 
+      child-src blob: gap:;
+      img-src 'self' blob: data:;
+      default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content:">
     <title>Demo screen Recorder</title>
     <style>
       * {
@@ -12,31 +18,37 @@
       }
 
       .container {
-        padding: 10px;
-        width: 300px;
+        padding: 32px 10px;
+        width: 250px;
         text-align: center;
+        background-color: azure;
        
       }
 
       button {
         padding: 5px;
         border: none;
-        font-size: 14px;
-        letter-spacing: 1.5px;
+        font-size: 12px;
+        letter-spacing: 1.2px;
         border-radius: 10px;
         background: rgb(43, 43, 43);
         color: white;
-        flex : 1 1 100px
       }
+
       .btn-holder{
         margin-top: 20px;
         display: flex;
-        gap:5px
+        gap:5px;
+        flex-direction: column;
+        gap :16px
       }
       button:hover {
         transform: scale(1.02);
         background: rgb(56, 55, 55);
       }
+      /* #stopButton{
+        display: none;
+      } */
     </style>
   </head>
   <body>
@@ -44,8 +56,10 @@
       <h3>Demo Screen Recorder</h3>
 
       <div class="btn-holder">
-        <button id="startButton">Start</button>
+        <button id="rc-screen">Record screen </button> 
         <button id="stopButton">Stop</button>     
+        <button id="rc-screen-audio">Record screen with audio</button>     
+        <button id="rc-video">Record screen with web cam</button>     
     </div>
 
     <script src="./popup.js"></script>

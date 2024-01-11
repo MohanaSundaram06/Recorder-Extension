@@ -1,61 +1,89 @@
 var recorder = null;
+var chunks = [];
+let userStream;
+let displayStream;
 
-function startRecording(stream) {
-  recorder = new MediaRecorder(stream);
+async function startRecording(withAudio, withVideo) {
+  let displayMediaOptions = {
+    video: true,
+    audio: withAudio,
+    surfaceSwitching: "exclude",
+    selfBrowserSurface: "exclude",
+    systemAudio: "exclude",
+  };
 
-  recorder.start();
+  // Fetch the display media stream
+  try {
+    displayStream = await navigator.mediaDevices.getDisplayMedia(
+      displayMediaOptions
+    );
 
-  recorder.onstop = () => {
-    stream.getTracks().forEach((track) => {
-      if (track.readyState === "live") {
-        track.stop();
+    // Fetch the user media stream and make the content display on the screen
+    if (withVideo) {
+      userStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      createVideoContainer(userStream);
+    }
+
+    recorder = new MediaRecorder(displayStream);
+
+    recorder.start();
+
+    recorder.onstop = () => {
+      const recordedBlob = new Blob(chunks, { type: "video/webm" });
+      chunks = [];
+      const videoUrl = URL.createObjectURL(recordedBlob);
+
+      displayStream.getTracks().forEach((track) => {
+        if (track.readyState === "live") track.stop();
+      });
+
+      if (withVideo) {
+        console.log("Stopping the user media streams");
+        userStream.getTracks().forEach((track) => {
+          if (track.readyState == "live") track.stop();
+        });
+        removeVideoContainer();
       }
-    });
-  };
+      chrome.runtime.sendMessage({
+        action: "createTab",
+        url: videoUrl,
+      });
+    };
 
-  recorder.ondataavailable = (event) => {
-    let recordedBlob = event.data;
-    let url = URL.createObjectURL(recordedBlob);
-
-    let a = document.createElement("a");
-
-    a.style.display = "none";
-    a.href = url;
-    a.download = "demo-recording.webm";
-
-    document.body.appendChild(a);
-    a.click();
-
-    document.body.removeChild(a);
-
-    URL.revokeObjectURL(url);
-  };
+    recorder.ondataavailable = (event) => {
+      chunks.push(event.data);
+      recorder = null;
+    };
+  } catch (e) {
+    console.log("Issuse while Attempting to record ", e);
+  } finally {
+    return recorder;
+  }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (
-    message.action === "startRecording" &&
-    (!recorder || recorder.state !== "recording")
-  ) {
-    console.log("Started Recording");
-
-    navigator.mediaDevices
-      .getDisplayMedia({
-        audio: true,
-        video: true,
-      })
-      .then((stream) => {
-        sendResponse(`processing: ${message.action}`);
-        startRecording(stream);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  if (!recorder || recorder.state !== "recording") {
+    if (message.action === "recordWithVideo") {
+      if (await startRecording(true, true))
+        sendResponse({ state: recorder.state });
+    } else if (message.action === "recordWithAudio") {
+      if (await startRecording(true, false))
+        sendResponse({ state: recorder.state });
+    } else if (message.action === "recordScreen") {
+      if (await startRecording(false, false))
+        sendResponse({ state: recorder.state });
+    }
   }
 
   if (message.action === "stopRecording") {
-    sendResponse(`processing: ${message.action}`);
-    if (!recorder) return console.log("no recorder found");
+    if (!recorder) {
+      return console.log("no recorder found");
+    }
+    sendResponse({ state: "stopped" });
     console.log("stopping video");
     recorder.stop();
   }
